@@ -1,52 +1,99 @@
-[![Build Status](https://ci.loohpjames.com/job/InteractiveChat-DiscordSRV-Addon/badge/icon)](https://ci.loohpjames.com/job/InteractiveChat-DiscordSRV-Addon/)
-# InteractiveChat DiscordSRV Addon
+# InteractiveChat-DiscordSRV-Addon (Ascension Fork)
 
-https://www.spigotmc.org/resources/83917/<br>
-https://modrinth.com/plugin/interactivechat-discordsrv-addon/<br>
-https://hangar.papermc.io/LOOHP/InteractiveChatDiscordSRV
+A patch-based fork of [InteractiveChat-DiscordSRV-Addon](https://github.com/LOOHP/InteractiveChat-DiscordSRV-Addon) migrated to **DiscordSRV v3 (Ascension)**.
 
-Have InteractiveChat Placeholders translated on DiscordSRV discord messages. As well as sharing items, inventories to discord and sharing images and gifs to the game from discord!
+> [!WARNING]  
+> **⚠️ Experimental Version**  
+> This fork is primarily developed for compatibility with DiscordSRV v3 (Ascension). Currently, several features may be stubbed or have their logic removed. 100% stability is not guaranteed.
 
-More information (screenshots, commands, permissions) about the plugin can be found on the Spigot page linked above.
+---
 
-## Built against Spigot
-Built against [Spigot's API](https://www.spigotmc.org/wiki/buildtools/) (required mc versions are listed on the spigot page above).
-Plugins built against Spigot usually also work with [Paper](https://papermc.io/).
+## Project Philosophy
 
-## Development Builds
+This repository uses the **Patch-Based Fork** model:
+- The repository itself does not store the full source code; it only stores **patch files** and **scripts**.
+- Source code is automatically pulled from the Upstream and patched when running the `setup` script.
+- This allows for a clear view of changes relative to the original version and makes it easy to follow upstream updates.
 
-- [Jenkins](https://ci.loohpjames.com/job/InteractiveChat-DiscordSRV-Addon/)
+---
 
-## Maven
-```html
-<repository>
-  <id>loohp-repo</id>
-  <url>https://repo.loohpjames.com/repository</url>
-</repository>
+## Requirements
+
+- Git
+- JDK 8+ (JDK matching your Minecraft version is recommended)
+- Maven
+- Stable internet connection
+
+---
+
+## Setup (First Time Setup)
+
+After cloning this repository, run the setup script:
+
+**Windows**
+```bat
+setup.bat
 ```
-```html
-<dependency>
-  <groupId>com.loohp</groupId>
-  <artifactId>InteractiveChatDiscordSrvAddon</artifactId>
-  <version>VERSION</version>
-  <scope>provided</scope>
-</dependency>
+
+**Linux / macOS**
+```bash
+chmod +x *.sh
+./setup.sh
 ```
-Replace `VERSION` with the version number.
 
-## Dependencies 
+The script will:
+1. Clone the upstream source code into the `src/` directory.
+2. Switch to the `upstreamRef` specified in `gradle.properties` (corresponding to the stable version of the original).
+3. Apply all patches in the `patches/` directory in order.
 
-- [InteractiveChat](https://www.spigotmc.org/resources/75870/)
-- [DiscordSRV](https://www.spigotmc.org/resources/discordsrv.18494/)
+---
 
-## Partnerships
+## Building the Project
 
-### Server Hosting
-**Use the link or click the banner** below to **get a 25% discount off** your first month when buying any of their gaming servers!<br>
-It also **supports my development**, take it as an alternative way to donate while getting your very own Minecraft server as well!
+Once the setup is complete, enter the `src` directory to build:
 
-*P.S. Using the link or clicking the banner rather than the code supports me more! (Costs you no extra!)*
+```bash
+cd src
+mvn clean install
+```
 
-**https://www.bisecthosting.com/loohp**
+The compiled JAR file will appear in `src/common/target/` (or the target directory of other modules).
 
-[![](https://www.bisecthosting.com/partners/custom-banners/96e11ee5-50e4-494f-854d-8c1708813abd.png)](https://www.bisecthosting.com/loohp)
+---
+
+## Daily Workflow
+
+### 1. Updating Upstream Code
+When the original version has updates you want to follow:
+- Run `update-upstream.bat` (Windows) or `./update-upstream.sh` (Linux/macOS).
+- The script will automatically pull the new version and attempt to rebase your patches onto it.
+- **In case of conflicts**: Enter `src/`, resolve conflicts manually, and follow the script's instructions.
+
+### 2. Modifying Code and Updating Patches
+1. Modify the code directly in the `src/` directory.
+2. Commit your changes inside `src/` (`git add -A && git commit`).
+3. Return to the root directory and run `make-patches.bat` or `./make-patches.sh`.
+4. Patch files will be regenerated; simply commit the `patches/` folder.
+
+---
+
+## File Structure
+
+```
+InteractiveChat-DiscordSRV-Addon/
+├── gradle.properties        ← Upstream URL and pinned commit hash
+├── patches/
+│   └── 0001-*.patch         ← Core changes for Ascension migration
+├── setup.sh / setup.bat     ← Initial setup (pull source + apply patches)
+├── make-patches.sh / .bat   ← Export new patches from src/
+└── update-upstream.sh / .bat← Follow upstream updates
+src/                         ← Generated (ignored, do not commit)
+└── ...                      ← Full Ascension version code
+```
+
+---
+
+## Acknowledgments
+
+- [DiscordSRV (Ascension)](https://github.com/DiscordSRV/Ascension)
+- [InteractiveChat-DiscordSRV-Addon](https://github.com/LOOHP/InteractiveChat-DiscordSRV-Addon)
