@@ -122,6 +122,6 @@ jobs:
             Auto-updated: `${{ steps.check_upstream.outputs.updated }}`
             JAR SHA1: `${{ steps.get_info.outputs.sha1 }}`
           draft: false
-          prerelease: true
+          prerelease: false
           files: |
             ${{ steps.get_info.outputs.jar_path }}
