@@ -1,4 +1,4 @@
-From d2dc0a07329ebfbb5bcfaf86aa98e0185581f2a4 Mon Sep 17 00:00:00 2001
+From 517a2e9643d4ba88fc52abbdd68efc3abf5318b3 Mon Sep 17 00:00:00 2001
 From: tcib_cat <102031694+thecatisbest@users.noreply.github.com>
 Date: Sun, 10 May 2026 09:58:35 +0800
 Subject: [PATCH] Migration to Ascension (excluding docs)
@@ -14,7 +14,7 @@ Subject: [PATCH] Migration to Ascension (excluding docs)
  .../listeners/DiscordCommands.java            |  650 +++++----
  .../listeners/DiscordInteractionEvents.java   |   23 +-
  .../listeners/DiscordReadyEvents.java         |   87 +-
- .../listeners/InboundToGameEvents.java        |  480 ++++---
+ .../listeners/InboundToGameEvents.java        |  488 ++++---
  .../listeners/LegacyDiscordCommandEvents.java |  223 ++-
  .../listeners/OutboundToDiscordEvents.java    | 1276 +++++++++++------
  .../metrics/Charts.java                       |    9 +-
@@ -30,22 +30,22 @@ Subject: [PATCH] Migration to Ascension (excluding docs)
  common/src/main/resources/config.yml          |    6 +-
  common/src/main/resources/plugin.yml          |    2 +-
  pom.xml                                       |   48 +
- 26 files changed, 2030 insertions(+), 1320 deletions(-)
+ 26 files changed, 2030 insertions(+), 1328 deletions(-)
  create mode 100644 common/libs/api-3.0.0-SNAPSHOT-all.jar
  create mode 100644 common/libs/common-3.0.0-SNAPSHOT-all.jar
 
 diff --git a/abstraction/pom.xml b/abstraction/pom.xml
-index 32b1adb0..145c5f7f 100644
+index 36df8686..59e193f3 100644
 --- a/abstraction/pom.xml
 +++ b/abstraction/pom.xml
 @@ -70,12 +70,6 @@
-             <version>4.25.0</version>
+             <version>5.1.1</version>
              <scope>provided</scope>
          </dependency>
 -        <dependency>
 -            <groupId>net.kyori</groupId>
 -            <artifactId>adventure-text-serializer-gson</artifactId>
--            <version>4.25.0</version>
+-            <version>5.1.1</version>
 -            <scope>provided</scope>
 -        </dependency>
          <dependency>
@@ -234915,10 +234915,10 @@ literal 0
 HcmV?d00001
 
 diff --git a/common/pom.xml b/common/pom.xml
-index 081b2545..1d230ab4 100644
+index 770968ff..74d1d55d 100644
 --- a/common/pom.xml
 +++ b/common/pom.xml
-@@ -363,9 +363,17 @@
+@@ -367,9 +367,17 @@
          </dependency>
          <dependency>
              <groupId>com.discordsrv</groupId>
@@ -234939,7 +234939,7 @@ index 081b2545..1d230ab4 100644
          </dependency>
          <dependency>
              <groupId>mineverse.aust1n46</groupId>
-@@ -373,6 +381,15 @@
+@@ -377,6 +385,15 @@
              <version>2.20.1</version>
              <scope>provided</scope>
          </dependency>
@@ -234956,10 +234956,10 @@ index 081b2545..1d230ab4 100644
              <groupId>me.clip</groupId>
              <artifactId>placeholderapi</artifactId>
 diff --git a/common/src/main/java/com/loohp/interactivechatdiscordsrvaddon/InteractiveChatDiscordSrvAddon.java b/common/src/main/java/com/loohp/interactivechatdiscordsrvaddon/InteractiveChatDiscordSrvAddon.java
-index 009cf8a3..e8954b91 100644
+index ad6b057c..a992b433 100644
 --- a/common/src/main/java/com/loohp/interactivechatdiscordsrvaddon/InteractiveChatDiscordSrvAddon.java
 +++ b/common/src/main/java/com/loohp/interactivechatdiscordsrvaddon/InteractiveChatDiscordSrvAddon.java
-@@ -71,10 +71,10 @@ import com.loohp.interactivechatdiscordsrvaddon.resources.mods.optifine.Optifine
+@@ -72,10 +72,10 @@ import com.loohp.interactivechatdiscordsrvaddon.resources.mods.optifine.Optifine
  import com.loohp.interactivechatdiscordsrvaddon.updater.Updater;
  import com.loohp.interactivechatdiscordsrvaddon.utils.ResourcePackUtils;
  import com.loohp.interactivechatdiscordsrvaddon.utils.TranslationKeyUtils;
@@ -234974,7 +234974,7 @@ index 009cf8a3..e8954b91 100644
  import net.md_5.bungee.api.ChatColor;
  import org.bukkit.Bukkit;
  import org.bukkit.command.CommandSender;
-@@ -116,8 +116,8 @@ public class InteractiveChatDiscordSrvAddon extends JavaPlugin implements Listen
+@@ -117,8 +117,8 @@ public class InteractiveChatDiscordSrvAddon extends JavaPlugin implements Listen
      public static final String CONFIG_ID = "interactivechatdiscordsrvaddon_config";
  
      public static final List<Permission> requiredPermissions = Collections.unmodifiableList(Arrays.asList(
@@ -234985,7 +234985,7 @@ index 009cf8a3..e8954b91 100644
          Permission.MESSAGE_MANAGE,
          Permission.MESSAGE_EMBED_LINKS,
          Permission.MESSAGE_ATTACH_FILES,
-@@ -144,9 +144,9 @@ public class InteractiveChatDiscordSrvAddon extends JavaPlugin implements Listen
+@@ -146,9 +146,9 @@ public class InteractiveChatDiscordSrvAddon extends JavaPlugin implements Listen
      public AtomicLong attachmentImageCounter = new AtomicLong(0);
      public AtomicLong imagesViewedCounter = new AtomicLong(0);
      public Queue<Integer> playerModelRenderingTimes = new ConcurrentLinkedQueue<>();
@@ -234998,7 +234998,7 @@ index 009cf8a3..e8954b91 100644
      public boolean itemImage = true;
      public boolean invImage = true;
      public boolean enderImage = true;
-@@ -227,6 +227,7 @@ public class InteractiveChatDiscordSrvAddon extends JavaPlugin implements Listen
+@@ -229,6 +229,7 @@ public class InteractiveChatDiscordSrvAddon extends JavaPlugin implements Listen
      public boolean playerlistCommandBungeecord = true;
      public boolean playerlistCommandOnlyInteractiveChatServers = true;
      public int playerlistCommandDeleteAfter = 10;
@@ -235006,7 +235006,7 @@ index 009cf8a3..e8954b91 100644
      public String playerlistCommandPlayerFormat = "";
      public boolean playerlistCommandAvatar = true;
      public boolean playerlistCommandPing = true;
-@@ -295,17 +296,16 @@ public class InteractiveChatDiscordSrvAddon extends JavaPlugin implements Listen
+@@ -297,17 +298,16 @@ public class InteractiveChatDiscordSrvAddon extends JavaPlugin implements Listen
          return resourceManager != null;
      }
  
@@ -235029,7 +235029,7 @@ index 009cf8a3..e8954b91 100644
  
          if (!getDataFolder().exists()) {
              getDataFolder().mkdirs();
-@@ -325,10 +325,12 @@ public class InteractiveChatDiscordSrvAddon extends JavaPlugin implements Listen
+@@ -327,10 +327,12 @@ public class InteractiveChatDiscordSrvAddon extends JavaPlugin implements Listen
          metrics = new Metrics(this, BSTATS_PLUGIN_ID);
          Charts.setup(metrics);
  
@@ -235046,7 +235046,7 @@ index 009cf8a3..e8954b91 100644
  
          getServer().getPluginManager().registerEvents(this, this);
          getServer().getPluginManager().registerEvents(new InboundToGameEvents(), this);
-@@ -399,6 +401,14 @@ public class InteractiveChatDiscordSrvAddon extends JavaPlugin implements Listen
+@@ -406,6 +408,14 @@ public class InteractiveChatDiscordSrvAddon extends JavaPlugin implements Listen
          }, 600, 6000);
  
          Scheduler.runTask(this, () -> placeholderCooldownManager = new PlaceholderCooldownManager());
@@ -235061,7 +235061,7 @@ index 009cf8a3..e8954b91 100644
      }
  
      @EventHandler
-@@ -436,8 +446,12 @@ public class InteractiveChatDiscordSrvAddon extends JavaPlugin implements Listen
+@@ -443,8 +453,12 @@ public class InteractiveChatDiscordSrvAddon extends JavaPlugin implements Listen
      @Override
      public void onDisable() {
          DiscordInteractionEvents.unregisterAll();
@@ -235076,7 +235076,7 @@ index 009cf8a3..e8954b91 100644
          if (resourceManager != null) {
              resourceManager.close();
          }
-@@ -453,6 +467,25 @@ public class InteractiveChatDiscordSrvAddon extends JavaPlugin implements Listen
+@@ -460,6 +474,25 @@ public class InteractiveChatDiscordSrvAddon extends JavaPlugin implements Listen
          }
      }
  
@@ -235102,7 +235102,7 @@ index 009cf8a3..e8954b91 100644
      @Override
      public void reloadConfig() {
          Config config = Config.getConfig(CONFIG_ID);
-@@ -539,9 +572,9 @@ public class InteractiveChatDiscordSrvAddon extends JavaPlugin implements Listen
+@@ -546,9 +579,9 @@ public class InteractiveChatDiscordSrvAddon extends JavaPlugin implements Listen
  
          embedDeleteAfter = config.getConfiguration().getInt("Settings.EmbedDeleteAfter");
  
@@ -235115,7 +235115,7 @@ index 009cf8a3..e8954b91 100644
  
          itemDisplaySingle = config.getConfiguration().getString("InventoryImage.Item.EmbedDisplay.Single");
          itemDisplayMultiple = config.getConfiguration().getString("InventoryImage.Item.EmbedDisplay.Multiple");
-@@ -589,6 +622,7 @@ public class InteractiveChatDiscordSrvAddon extends JavaPlugin implements Listen
+@@ -596,6 +629,7 @@ public class InteractiveChatDiscordSrvAddon extends JavaPlugin implements Listen
          playerlistCommandBungeecord = config.getConfiguration().getBoolean("DiscordCommands.PlayerList.ListBungeecordPlayers");
          playerlistCommandOnlyInteractiveChatServers = config.getConfiguration().getBoolean("DiscordCommands.PlayerList.OnlyInteractiveChatServers");
          playerlistCommandDeleteAfter = config.getConfiguration().getInt("DiscordCommands.PlayerList.DeleteAfter");
@@ -235123,7 +235123,7 @@ index 009cf8a3..e8954b91 100644
          playerlistCommandPlayerFormat = ChatColorUtils.translateAlternateColorCodes('&', config.getConfiguration().getString("DiscordCommands.PlayerList.TablistOptions.PlayerFormat"));
          playerlistCommandAvatar = config.getConfiguration().getBoolean("DiscordCommands.PlayerList.TablistOptions.ShowPlayerAvatar");
          playerlistCommandPing = config.getConfiguration().getBoolean("DiscordCommands.PlayerList.TablistOptions.ShowPlayerPing");
-@@ -640,8 +674,6 @@ public class InteractiveChatDiscordSrvAddon extends JavaPlugin implements Listen
+@@ -647,8 +681,6 @@ public class InteractiveChatDiscordSrvAddon extends JavaPlugin implements Listen
          forceUnicode = config.getConfiguration().getBoolean("Resources.ForceUnicodeFont");
  
          FontTextureResource.setCacheTime(cacheTimeout);
@@ -235209,7 +235209,7 @@ index 32aff802..34eb7e6d 100644
  
  }
 diff --git a/common/src/main/java/com/loohp/interactivechatdiscordsrvaddon/listeners/DiscordCommands.java b/common/src/main/java/com/loohp/interactivechatdiscordsrvaddon/listeners/DiscordCommands.java
-index 4e19e1ec..094696f6 100644
+index 79011cb6..094696f6 100644
 --- a/common/src/main/java/com/loohp/interactivechatdiscordsrvaddon/listeners/DiscordCommands.java
 +++ b/common/src/main/java/com/loohp/interactivechatdiscordsrvaddon/listeners/DiscordCommands.java
 @@ -19,7 +19,12 @@
@@ -235751,12 +235751,12 @@ index 4e19e1ec..094696f6 100644
                              @SuppressWarnings("deprecation")
 -                            OfflineICPlayer offlinePlayer = ICPlayerFactory.getUnsafe().getOfflineICPPlayerWithoutInitialization(bukkitOfflinePlayer.getUniqueId());
 -                            playerInfo.put(offlinePlayer.getUniqueId(), new ValuePairs<>(getPlayerGroups(bukkitOfflinePlayer), offlinePlayer.getName()));
--                            String name = ChatColorUtils.translateAlternateColorCodes('&', PlaceholderParser.parse(offlinePlayer, InteractiveChatDiscordSrvAddon.plugin.playerlistCommandPlayerFormat));
+-                            String name = PlaceholderParser.parse(offlinePlayer, InteractiveChatDiscordSrvAddon.plugin.playerlistCommandPlayerFormat);
 -                            Component nameComponent;
 -                            if (InteractiveChatDiscordSrvAddon.plugin.playerlistCommandParsePlayerNamesWithMiniMessage) {
 -                                nameComponent = MiniMessage.miniMessage().deserialize(name);
 -                            } else {
--                                nameComponent = InteractiveChatComponentSerializer.legacySection().deserialize(name);
+-                                nameComponent = InteractiveChatComponentSerializer.legacySection().deserialize(ChatColorUtils.translateAlternateColorCodes('&', name));
 +                            OfflineICPlayer firstPlayer = ICPlayerFactory.getUnsafe().getOfflineICPPlayerWithoutInitialization(players.keySet().iterator().next().getUniqueId());
 +                            List<Component> header = new ArrayList<>();
 +                            if (!InteractiveChatDiscordSrvAddon.plugin.playerlistCommandHeader.isEmpty()) {
@@ -236245,10 +236245,10 @@ index 6f685cc3..e2af15db 100644
  
  }
 diff --git a/common/src/main/java/com/loohp/interactivechatdiscordsrvaddon/listeners/InboundToGameEvents.java b/common/src/main/java/com/loohp/interactivechatdiscordsrvaddon/listeners/InboundToGameEvents.java
-index 11265281..4f37fd55 100644
+index 8f42f8ba..15473203 100644
 --- a/common/src/main/java/com/loohp/interactivechatdiscordsrvaddon/listeners/InboundToGameEvents.java
 +++ b/common/src/main/java/com/loohp/interactivechatdiscordsrvaddon/listeners/InboundToGameEvents.java
-@@ -37,23 +37,26 @@ import com.loohp.interactivechatdiscordsrvaddon.debug.Debug;
+@@ -38,23 +38,26 @@ import com.loohp.interactivechatdiscordsrvaddon.graphics.APNGReader;
  import com.loohp.interactivechatdiscordsrvaddon.graphics.GifReader;
  import com.loohp.interactivechatdiscordsrvaddon.modules.DiscordToGameMention;
  import com.loohp.interactivechatdiscordsrvaddon.objectholders.PreviewableImageContainer;
@@ -236289,7 +236289,7 @@ index 11265281..4f37fd55 100644
  import org.bukkit.Bukkit;
  import org.bukkit.GameMode;
  import org.bukkit.entity.Entity;
-@@ -82,10 +85,13 @@ import java.util.Map;
+@@ -83,10 +86,13 @@ import java.util.Map;
  import java.util.Map.Entry;
  import java.util.Set;
  import java.util.UUID;
@@ -236303,7 +236303,7 @@ index 11265281..4f37fd55 100644
  import java.util.concurrent.Future;
  import java.util.concurrent.TimeUnit;
  import java.util.concurrent.TimeoutException;
-@@ -99,254 +105,255 @@ public class InboundToGameEvents implements Listener {
+@@ -100,260 +106,253 @@ public class InboundToGameEvents implements Listener {
  
      public static final Map<UUID, DiscordAttachmentData> DATA = new ConcurrentHashMap<>();
      public static final Map<Player, GraphicsToPacketMapWrapper> MAP_VIEWERS = new ConcurrentHashMap<>();
@@ -236642,7 +236642,15 @@ index 11265281..4f37fd55 100644
 -                            GraphicsToPacketMapWrapper map;
 -                            boolean isVideo = false;
 -                            if (type.endsWith("gif.png") || type.endsWith("apng")) {
--                                throw new UnsupportedOperationException("Animated PNG not yet supported, this error can be ignored");
+-                                map = new GraphicsToPacketMapWrapper(InteractiveChatDiscordSrvAddon.plugin.playbackBarEnabled, InteractiveChatDiscordSrvAddon.plugin.discordAttachmentsMapBackgroundColor);
+-                                APNGReader.readAPNG(stream, InteractiveChatDiscordSrvAddon.plugin.mediaReadingService, (frames, e) -> {
+-                                    if (e != null) {
+-                                        e.printStackTrace();
+-                                        map.completeFuture(null);
+-                                    } else {
+-                                        map.completeFuture(frames);
+-                                    }
+-                                });
 -                            } else if (type.endsWith("gif")) {
 -                                map = new GraphicsToPacketMapWrapper(InteractiveChatDiscordSrvAddon.plugin.playbackBarEnabled, InteractiveChatDiscordSrvAddon.plugin.discordAttachmentsMapBackgroundColor);
 -                                GifReader.readGif(stream, InteractiveChatDiscordSrvAddon.plugin.mediaReadingService, (frames, e) -> {
@@ -236739,13 +236747,19 @@ index 11265281..4f37fd55 100644
                                      boolean isVideo = false;
 -                                    if (type.endsWith("gif.png") || type.endsWith("apng")) {
 +                                    if (type != null && (type.endsWith("gif.png") || type.endsWith("apng"))) {
-                                         throw new UnsupportedOperationException("Animated PNG not yet supported, this error can be ignored");
+                                         map = new GraphicsToPacketMapWrapper(InteractiveChatDiscordSrvAddon.plugin.playbackBarEnabled, InteractiveChatDiscordSrvAddon.plugin.discordAttachmentsMapBackgroundColor);
+                                         APNGReader.readAPNG(stream, InteractiveChatDiscordSrvAddon.plugin.mediaReadingService, (frames, e) -> {
+                                             if (e != null) {
+@@ -363,7 +362,7 @@ public class InboundToGameEvents implements Listener {
+                                                 map.completeFuture(frames);
+                                             }
+                                         });
 -                                    } else if (type.endsWith("gif")) {
 +                                    } else if (type != null && type.endsWith("gif")) {
                                          map = new GraphicsToPacketMapWrapper(InteractiveChatDiscordSrvAddon.plugin.playbackBarEnabled, InteractiveChatDiscordSrvAddon.plugin.discordAttachmentsMapBackgroundColor);
                                          GifReader.readGif(stream, InteractiveChatDiscordSrvAddon.plugin.mediaReadingService, (frames, e) -> {
                                              if (e != null) {
-@@ -360,25 +367,88 @@ public class InboundToGameEvents implements Listener {
+@@ -377,25 +376,88 @@ public class InboundToGameEvents implements Listener {
                                          BufferedImage image = ImageIO.read(stream);
                                          map = new GraphicsToPacketMapWrapper(image, InteractiveChatDiscordSrvAddon.plugin.discordAttachmentsMapBackgroundColor);
                                      }
@@ -236840,7 +236854,7 @@ index 11265281..4f37fd55 100644
      }
  
 diff --git a/common/src/main/java/com/loohp/interactivechatdiscordsrvaddon/listeners/LegacyDiscordCommandEvents.java b/common/src/main/java/com/loohp/interactivechatdiscordsrvaddon/listeners/LegacyDiscordCommandEvents.java
-index 376bfba1..32b1acff 100644
+index 6087e0fd..32b1acff 100644
 --- a/common/src/main/java/com/loohp/interactivechatdiscordsrvaddon/listeners/LegacyDiscordCommandEvents.java
 +++ b/common/src/main/java/com/loohp/interactivechatdiscordsrvaddon/listeners/LegacyDiscordCommandEvents.java
 @@ -37,12 +37,11 @@ import com.loohp.interactivechat.utils.PlayerUtils;
@@ -236922,12 +236936,12 @@ index 376bfba1..32b1acff 100644
 -                        @SuppressWarnings("deprecation")
 -                        OfflineICPlayer offlinePlayer = ICPlayerFactory.getUnsafe().getOfflineICPPlayerWithoutInitialization(bukkitOfflinePlayer.getUniqueId());
 -                        playerInfo.put(offlinePlayer.getUniqueId(), new ValuePairs<>(DiscordCommands.getPlayerGroups(bukkitOfflinePlayer), offlinePlayer.getName()));
--                        String name = ChatColorUtils.translateAlternateColorCodes('&', PlaceholderParser.parse(offlinePlayer, InteractiveChatDiscordSrvAddon.plugin.playerlistCommandPlayerFormat));
+-                        String name = PlaceholderParser.parse(offlinePlayer, InteractiveChatDiscordSrvAddon.plugin.playerlistCommandPlayerFormat);
 -                        Component nameComponent;
 -                        if (InteractiveChatDiscordSrvAddon.plugin.playerlistCommandParsePlayerNamesWithMiniMessage) {
 -                            nameComponent = MiniMessage.miniMessage().deserialize(name);
 -                        } else {
--                            nameComponent = LegacyComponentSerializer.legacySection().deserialize(name);
+-                            nameComponent = LegacyComponentSerializer.legacySection().deserialize(ChatColorUtils.translateAlternateColorCodes('&', name));
 -                        }
 -                        player.add(new ValueTrios<>(offlinePlayer, nameComponent, entry.getValue()));
 -                    }
@@ -239331,18 +239345,18 @@ index 19f80345..63c0eebc 100644
                      }
                  }
 diff --git a/common/src/main/java/com/loohp/interactivechatdiscordsrvaddon/utils/DiscordItemStackUtils.java b/common/src/main/java/com/loohp/interactivechatdiscordsrvaddon/utils/DiscordItemStackUtils.java
-index a3444a93..b3d2bfaf 100644
+index e384b7c1..adf27c0b 100644
 --- a/common/src/main/java/com/loohp/interactivechatdiscordsrvaddon/utils/DiscordItemStackUtils.java
 +++ b/common/src/main/java/com/loohp/interactivechatdiscordsrvaddon/utils/DiscordItemStackUtils.java
-@@ -31,6 +31,7 @@ import com.loohp.interactivechat.libs.net.kyori.adventure.text.format.Style;
+@@ -30,6 +30,7 @@ import com.loohp.interactivechat.libs.net.kyori.adventure.text.format.NamedTextC
+ import com.loohp.interactivechat.libs.net.kyori.adventure.text.format.Style;
  import com.loohp.interactivechat.libs.net.kyori.adventure.text.format.TextColor;
- import com.loohp.interactivechat.libs.net.kyori.adventure.text.format.TextDecoration;
  import com.loohp.interactivechat.libs.net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 +import com.loohp.interactivechat.libs.net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
  import com.loohp.interactivechat.libs.net.querz.nbt.tag.CompoundTag;
  import com.loohp.interactivechat.libs.org.apache.commons.lang3.math.Fraction;
  import com.loohp.interactivechat.libs.org.apache.commons.text.WordUtils;
-@@ -55,10 +56,6 @@ import com.loohp.interactivechatdiscordsrvaddon.objectholders.PaintingVariant;
+@@ -54,10 +55,6 @@ import com.loohp.interactivechatdiscordsrvaddon.objectholders.PaintingVariant;
  import com.loohp.interactivechatdiscordsrvaddon.objectholders.ToolTipComponent;
  import com.loohp.interactivechatdiscordsrvaddon.objectholders.ToolTipComponent.ToolTipType;
  import com.loohp.interactivechatdiscordsrvaddon.resources.languages.SpecificTranslateFunction;
@@ -239353,7 +239367,7 @@ index a3444a93..b3d2bfaf 100644
  import net.md_5.bungee.api.ChatColor;
  import org.bukkit.Bukkit;
  import org.bukkit.FireworkEffect;
-@@ -809,7 +806,10 @@ public class DiscordItemStackUtils {
+@@ -814,7 +811,10 @@ public class DiscordItemStackUtils {
          return new DiscordToolTip(prints, !hasCustomName && prints.size() <= 1, NMSAddon.getInstance().shouldHideTooltip(item));
      }
  
@@ -239365,7 +239379,7 @@ index a3444a93..b3d2bfaf 100644
          SpecificTranslateFunction translationFunction = InteractiveChatDiscordSrvAddon.plugin.getResourceManager().getLanguageManager().getTranslateFunction().ofLanguage(language);
          DiscordSerializer serializerSpecial = new DiscordSerializer(DiscordSerializerOptions.defaults().withEmbedLinks(embedLinks));
          Function<?, String> resolver = component -> serializerSpecial.serialize(ComponentStringUtils.toDiscordSRVComponent(ComponentStringUtils.resolve((Component) component, translationFunction)));
-@@ -826,6 +826,36 @@ public class DiscordItemStackUtils {
+@@ -831,6 +831,36 @@ public class DiscordItemStackUtils {
              return "";
          }).collect(Collectors.joining("\n"));
      }
@@ -239432,11 +239446,11 @@ index 2d2c599b..5826761c 100644
  
  }
 diff --git a/common/src/main/java/com/loohp/interactivechatdiscordsrvaddon/utils/TranslationKeyUtils.java b/common/src/main/java/com/loohp/interactivechatdiscordsrvaddon/utils/TranslationKeyUtils.java
-index fa2eea0d..0791ba23 100644
+index a90bbff7..e49178bc 100644
 --- a/common/src/main/java/com/loohp/interactivechatdiscordsrvaddon/utils/TranslationKeyUtils.java
 +++ b/common/src/main/java/com/loohp/interactivechatdiscordsrvaddon/utils/TranslationKeyUtils.java
-@@ -470,4 +470,15 @@ public class TranslationKeyUtils {
-         }
+@@ -482,4 +482,15 @@ public class TranslationKeyUtils {
+         return "entity.minecraft.sulfur_cube.content";
      }
  
 +    public static String getNotLinked() {
@@ -239477,7 +239491,7 @@ index 1563723e..00c0bf0c 100644
    Updater: true
 \ No newline at end of file
 diff --git a/common/src/main/resources/plugin.yml b/common/src/main/resources/plugin.yml
-index 4a5a827f..89f4323a 100644
+index 486be1a1..d63463fc 100644
 --- a/common/src/main/resources/plugin.yml
 +++ b/common/src/main/resources/plugin.yml
 @@ -5,7 +5,7 @@ main: com.loohp.interactivechatdiscordsrvaddon.InteractiveChatDiscordSrvAddon
@@ -239486,11 +239500,11 @@ index 4a5a827f..89f4323a 100644
  description: DiscordSRV addon to InteractiveChat
 -depend: [InteractiveChat, DiscordSRV]
 +depend: [InteractiveChat, DiscordSRV-Ascension]
- softdepend: [ItemsAdder, ImageFrame]
+ softdepend: [ItemsAdder, ImageFrame, CraftEngine]
  prefix: InteractiveChatDiscordSRVAddon
  
 diff --git a/pom.xml b/pom.xml
-index e90b9b28..fd61dbb3 100644
+index dbda020d..bc5d6c09 100644
 --- a/pom.xml
 +++ b/pom.xml
 @@ -33,6 +33,54 @@
