@@ -49,4 +49,4 @@ done
 
 echo ""
 echo "Done! Source is ready in src/"
-echo "To build: cd src && ./gradlew build"
+echo "To build: cd src && ./mvn clean install"

@@ -1,0 +1,221 @@
+From 5f3cad923d8b1d420aa8e5d4e2ccbfeb87e05d38 Mon Sep 17 00:00:00 2001
+From: tcib_cat <102031694+thecatisbest@users.noreply.github.com>
+Date: Thu, 6 Aug 2026 23:10:00 +0800
+Subject: [PATCH] Fix advancement localization and CraftEngine compatibility
+
+---
+ common/src/main/java/com/loohp/interactivechatdiscordsrvaddon/InteractiveChatDiscordSrvAddon.java |  3 +-
+ common/src/main/java/com/loohp/interactivechatdiscordsrvaddon/hooks/craftengine/CraftEngineHook.java | 30 +++++++++++++++++++++-
+ common/src/main/java/com/loohp/interactivechatdiscordsrvaddon/listeners/OutboundToDiscordEvents.java | 11 +++++---
+ common/src/main/java/com/loohp/interactivechatdiscordsrvaddon/utils/InteractiveChatLanguageLoader.java | 87 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 124 insertions(+), 7 deletions(-)
+ create mode 100644 common/src/main/java/com/loohp/interactivechatdiscordsrvaddon/utils/InteractiveChatLanguageLoader.java
+
+diff --git a/common/src/main/java/com/loohp/interactivechatdiscordsrvaddon/InteractiveChatDiscordSrvAddon.java b/common/src/main/java/com/loohp/interactivechatdiscordsrvaddon/InteractiveChatDiscordSrvAddon.java
+index a992b433..07358f00 100644
+--- a/common/src/main/java/com/loohp/interactivechatdiscordsrvaddon/InteractiveChatDiscordSrvAddon.java
++++ b/common/src/main/java/com/loohp/interactivechatdiscordsrvaddon/InteractiveChatDiscordSrvAddon.java
+@@ -71,6 +71,7 @@ import com.loohp.interactivechatdiscordsrvaddon.resources.mods.chime.ChimeManage
+ import com.loohp.interactivechatdiscordsrvaddon.resources.mods.optifine.OptifineManager;
+ import com.loohp.interactivechatdiscordsrvaddon.updater.Updater;
+ import com.loohp.interactivechatdiscordsrvaddon.utils.ResourcePackUtils;
++import com.loohp.interactivechatdiscordsrvaddon.utils.InteractiveChatLanguageLoader;
+ import com.loohp.interactivechatdiscordsrvaddon.utils.TranslationKeyUtils;
+ import com.discordsrv.api.DiscordSRV;
+ import com.discordsrv.api.discord.connection.details.DiscordGatewayIntent;
+@@ -793,7 +794,7 @@ public class InteractiveChatDiscordSrvAddon extends JavaPlugin implements Listen
+                 }
+ 
+                 resourceManager.getFontManager().setDefaultKey(forceUnicode ? FontManager.UNIFORM_FONT : FontManager.DEFAULT_FONT);
+-                resourceManager.getLanguageManager().setTranslateFunction((translateKey, fallback, language) -> LanguageUtils.getTranslation(translateKey, language).getResultOrFallback(fallback));
++                resourceManager.getLanguageManager().setTranslateFunction((translateKey, fallback, language) -> InteractiveChatLanguageLoader.getTranslation(translateKey, fallback, language));
+                 resourceManager.getLanguageManager().setAvailableLanguagesSupplier(() -> LanguageUtils.getLoadedLanguages());
+                 resourceManager.getLanguageManager().registerReloadListener(e -> {
+                     LanguageUtils.clearPluginTranslations(InteractiveChatDiscordSrvAddon.plugin);
+diff --git a/common/src/main/java/com/loohp/interactivechatdiscordsrvaddon/hooks/craftengine/CraftEngineHook.java b/common/src/main/java/com/loohp/interactivechatdiscordsrvaddon/hooks/craftengine/CraftEngineHook.java
+index b0da7c5d..c2e60243 100644
+--- a/common/src/main/java/com/loohp/interactivechatdiscordsrvaddon/hooks/craftengine/CraftEngineHook.java
++++ b/common/src/main/java/com/loohp/interactivechatdiscordsrvaddon/hooks/craftengine/CraftEngineHook.java
+@@ -7,6 +7,7 @@ import org.bukkit.Material;
+ import org.bukkit.inventory.ItemStack;
+ 
+ import java.io.File;
++import java.lang.reflect.Method;
+ import java.nio.file.Files;
+ import java.nio.file.Path;
+ 
+@@ -40,10 +41,35 @@ public class CraftEngineHook {
+         if (icPlayer == null || !icPlayer.isOnline() || !icPlayer.getPlayer().isLocal()) {
+             return null;
+         }
+-        return BukkitCraftEngine.instance().adapt(icPlayer.getPlayer().getLocalPlayer());
++        org.bukkit.entity.Player bukkitPlayer = icPlayer.getPlayer().getLocalPlayer();
++        BukkitCraftEngine craftEngine = BukkitCraftEngine.instance();
++
++        try {
++            // CraftEngine versions before 26.7 exposed this method directly.
++            Method adapt = craftEngine.getClass().getMethod("adapt", org.bukkit.entity.Player.class);
++            Object player = adapt.invoke(craftEngine, bukkitPlayer);
++            if (player instanceof net.momirealms.craftengine.core.entity.player.Player) {
++                return (net.momirealms.craftengine.core.entity.player.Player) player;
++            }
++        } catch (NoSuchMethodException ignored) {
++            // CraftEngine 26.7+ moved the lookup to BukkitNetworkManager.
++        } catch (ReflectiveOperationException ignored) {
++            return null;
++        }
++
++        try {
++            Object networkManager = craftEngine.getClass().getMethod("networkManager").invoke(craftEngine);
++            Object player = networkManager.getClass().getMethod("getOnlineUser", java.util.UUID.class)
++                    .invoke(networkManager, bukkitPlayer.getUniqueId());
++            if (player instanceof net.momirealms.craftengine.core.entity.player.Player) {
++                return (net.momirealms.craftengine.core.entity.player.Player) player;
++            }
++        } catch (ReflectiveOperationException ignored) {
++        }
++        return null;
+     }
+ 
+     private static boolean isEmpty(ItemStack itemStack) {
+         return itemStack == null || itemStack.getType().equals(Material.AIR) || itemStack.getAmount() <= 0;
+     }
+-}
+\ No newline at end of file
++}
+diff --git a/common/src/main/java/com/loohp/interactivechatdiscordsrvaddon/listeners/OutboundToDiscordEvents.java b/common/src/main/java/com/loohp/interactivechatdiscordsrvaddon/listeners/OutboundToDiscordEvents.java
+index 05be4a1b..42a6d0f9 100644
+--- a/common/src/main/java/com/loohp/interactivechatdiscordsrvaddon/listeners/OutboundToDiscordEvents.java
++++ b/common/src/main/java/com/loohp/interactivechatdiscordsrvaddon/listeners/OutboundToDiscordEvents.java
+@@ -46,7 +46,6 @@ import com.loohp.interactivechat.utils.CustomStringUtils;
+ import com.loohp.interactivechat.utils.InteractiveChatComponentSerializer;
+ import com.loohp.interactivechat.utils.InventoryUtils;
+ import com.loohp.interactivechat.utils.ItemStackUtils;
+-import com.loohp.interactivechat.utils.LanguageUtils;
+ import com.loohp.interactivechat.utils.PlaceholderParser;
+ import com.loohp.interactivechat.utils.PlayerUtils;
+ import com.loohp.interactivechatdiscordsrvaddon.InteractiveChatDiscordSrvAddon;
+@@ -76,6 +75,7 @@ import com.loohp.interactivechatdiscordsrvaddon.utils.ComponentStringUtils;
+ import com.loohp.interactivechatdiscordsrvaddon.utils.DiscordContentUtils;
+ import com.loohp.interactivechatdiscordsrvaddon.utils.DiscordItemStackUtils;
+ import com.loohp.interactivechatdiscordsrvaddon.utils.DiscordItemStackUtils.DiscordToolTip;
++import com.loohp.interactivechatdiscordsrvaddon.utils.InteractiveChatLanguageLoader;
+ import com.loohp.interactivechatdiscordsrvaddon.utils.TranslationKeyUtils;
+ import com.loohp.interactivechatdiscordsrvaddon.wrappers.TitledInventoryWrapper;
+ import com.discordsrv.api.DiscordSRV;
+@@ -1066,7 +1066,10 @@ public class OutboundToDiscordEvents implements Listener {
+ 
+                 builder.addAttachment(new java.io.ByteArrayInputStream(thumbnailData), "Thumbnail.png");
+                 changed = true;
+-            } catch (IOException e) {
++            } catch (IOException | LinkageError e) {
++                // An incompatible optional resource-pack hook (for example
++                // CraftEngine) must not prevent the advancement title and
++                // description from being localized below.
+                 e.printStackTrace();
+             }
+         }
+@@ -1079,8 +1082,8 @@ public class OutboundToDiscordEvents implements Listener {
+                 // Fix getChannelName() - using empty string for now as it's not available in
+                 // DiscordSRVPlayer
+                 embedBuilder.setAuthorName(ComponentStringUtils.convertFormattedString(
+-                        LanguageUtils.getTranslation(advancementType.getTranslationKey(),
+-                                InteractiveChatDiscordSrvAddon.plugin.language).getResult(),
++                        InteractiveChatLanguageLoader.getTranslation(advancementType.getTranslationKey(), null,
++                                InteractiveChatDiscordSrvAddon.plugin.language),
+                         "", ChatColorUtils.stripColor(title)));
+ 
+                 Color color;
+diff --git a/common/src/main/java/com/loohp/interactivechatdiscordsrvaddon/utils/InteractiveChatLanguageLoader.java b/common/src/main/java/com/loohp/interactivechatdiscordsrvaddon/utils/InteractiveChatLanguageLoader.java
+new file mode 100644
+index 00000000..32d62686
+--- /dev/null
++++ b/common/src/main/java/com/loohp/interactivechatdiscordsrvaddon/utils/InteractiveChatLanguageLoader.java
+@@ -0,0 +1,87 @@
++/*
++ * This file is part of InteractiveChatDiscordSrvAddon2.
++ *
++ * Copyright (C) 2020 - 2025. LoohpJames <jamesloohp@gmail.com>
++ * Copyright (C) 2020 - 2025. Contributors
++ *
++ * This program is free software: you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation, either version 3 of the License, or
++ * (at your option) any later version.
++ */
++
++package com.loohp.interactivechatdiscordsrvaddon.utils;
++
++import com.loohp.interactivechat.InteractiveChat;
++import com.loohp.interactivechat.libs.com.google.gson.Gson;
++import com.loohp.interactivechat.libs.com.google.gson.reflect.TypeToken;
++import com.loohp.interactivechat.utils.LanguageUtils;
++
++import java.io.File;
++import java.io.FileInputStream;
++import java.io.InputStreamReader;
++import java.lang.reflect.Type;
++import java.nio.charset.StandardCharsets;
++import java.util.Collections;
++import java.util.HashMap;
++import java.util.Map;
++import java.util.concurrent.ConcurrentHashMap;
++
++/**
++ * Reads InteractiveChat's on-disk language files before falling back to its
++ * in-memory language cache. The cache used by LanguageUtils is not guaranteed
++ * to include every language file after a resource reload.
++ */
++public final class InteractiveChatLanguageLoader {
++
++    private static final Gson GSON = new Gson();
++    private static final Type LANGUAGE_MAP_TYPE = new TypeToken<Map<String, String>>() {}.getType();
++    private static final Map<String, CachedLanguage> CACHE = new ConcurrentHashMap<>();
++
++    private InteractiveChatLanguageLoader() {
++    }
++
++    public static String getTranslation(String translationKey, String fallback, String language) {
++        String translation = getTranslations(language).get(translationKey);
++        if (translation != null) {
++            return translation;
++        }
++        String fallbackTranslation = LanguageUtils.getTranslation(translationKey, language).getResultOrFallback(fallback);
++        return fallbackTranslation == null ? translationKey : fallbackTranslation;
++    }
++
++    private static Map<String, String> getTranslations(String language) {
++        File file = new File(InteractiveChat.plugin.getDataFolder(), "lang/languages/" + language + ".json");
++        long lastModified = file.isFile() ? file.lastModified() : -1L;
++        CachedLanguage cached = CACHE.get(language);
++        if (cached != null && cached.lastModified == lastModified) {
++            return cached.translations;
++        }
++
++        Map<String, String> translations = new HashMap<>();
++        if (lastModified >= 0L) {
++            try (InputStreamReader reader = new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8)) {
++                Map<String, String> loaded = GSON.fromJson(reader, LANGUAGE_MAP_TYPE);
++                if (loaded != null) {
++                    translations.putAll(loaded);
++                }
++            } catch (Exception ignored) {
++            }
++        }
++
++        Map<String, String> result = Collections.unmodifiableMap(translations);
++        CACHE.put(language, new CachedLanguage(lastModified, result));
++        return result;
++    }
++
++    private static final class CachedLanguage {
++
++        private final long lastModified;
++        private final Map<String, String> translations;
++
++        private CachedLanguage(long lastModified, Map<String, String> translations) {
++            this.lastModified = lastModified;
++            this.translations = translations;
++        }
++    }
++}

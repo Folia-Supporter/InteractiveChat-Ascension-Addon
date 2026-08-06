@@ -30,14 +30,7 @@ This repository uses the **Patch-Based Fork** model:
 
 After cloning this repository, run the setup script:
 
-**Windows**
-```bat
-setup.bat
-```
-
-**Linux / macOS**
 ```bash
-chmod +x *.sh
 ./setup.sh
 ```
 
